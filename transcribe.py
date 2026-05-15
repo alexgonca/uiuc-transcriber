@@ -20,6 +20,7 @@ if torch.cuda.is_available():
     batch_size = max(4, min(32, int(vram_gb / 2)))
 else:
     batch_size = 4
+print(f"batch_size = {batch_size}")
 language_code = "pt"
 device = "cuda"
 compute_type = "float16"

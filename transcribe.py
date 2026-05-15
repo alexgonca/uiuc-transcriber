@@ -5,8 +5,6 @@ import torch
 print("PyTorch Version:", torch.__version__)
 print("GPU Available:", torch.cuda.is_available())
 
-# Add the local bin directory to the system PATH so WhisperX can find FFmpeg
-os.environ["PATH"] += os.pathsep + os.path.join(os.path.dirname(os.path.abspath(__file__)), ".local", "bin")
 
 import configparser
 import whisperx

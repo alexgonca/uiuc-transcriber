@@ -16,8 +16,11 @@ import torch
 original_audio = "audio1421884911.m4a"
 audio_file = original_audio.replace(".m4a", ".wav")
 if torch.cuda.is_available():
-    vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
-    batch_size = max(4, min(32, int(vram_gb / 2)))
+    free_vram, total_vram = torch.cuda.mem_get_info(0)
+    free_gb = free_vram / (1024**3)
+    total_gb = total_vram / (1024**3)
+    batch_size = max(4, min(32, int(free_gb / 2)))
+    print(f"vram = {total_gb:.1f}GB total, {free_gb:.1f}GB free")
 else:
     batch_size = 4
 print(f"batch_size = {batch_size}")

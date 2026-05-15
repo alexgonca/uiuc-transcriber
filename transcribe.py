@@ -4,7 +4,11 @@ import warnings
 warnings.filterwarnings("ignore", message=r"\ntorchcodec is not installed")
 warnings.filterwarnings("ignore", message=r"TensorFloat-32")
 warnings.filterwarnings("ignore", message=r"std\(\): degrees of freedom is <= 0")
-logging.getLogger("lightning.pytorch.utilities.upgrade_checkpoint").setLevel(logging.ERROR)
+class _SuppressFilter(logging.Filter):
+    _patterns = ["automatically upgraded your loaded checkpoint"]
+    def filter(self, record):
+        return not any(p in record.getMessage() for p in self._patterns)
+logging.getLogger().addFilter(_SuppressFilter())
 print(f"memory = {int(os.environ.get('MEM_LIMIT'))/(1024**3)}GB")
 print(f"cores  = {os.environ.get('CPU_LIMIT')}")
 import torch

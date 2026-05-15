@@ -2,14 +2,15 @@
 
 mkdir -p .local/
 
-echo "Enter your Hugging Face token:"
-read -rs hf_token
-echo
-cat > .local/config.ini <<EOF
-[credentials]
-hf_token = $hf_token
+if [ -f settings.yml ]; then
+    echo "WARNING: settings.yml already exists — skipping creation. Edit it manually if you need to update your token."
+else
+    cat > settings.yml <<EOF
+hf_token: "paste-your-hugging-face-token-here"
 EOF
-echo "Token saved to .local/config.ini"
+    chmod 600 settings.yml
+    echo "settings.yml created. Open it and replace the placeholder with your Hugging Face token before running transcriptions."
+fi
 
 echo "1. Creating virtual environment..."
 python3 -m venv .local/venv/ --system-site-packages

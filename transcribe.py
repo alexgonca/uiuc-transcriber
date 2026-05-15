@@ -15,18 +15,29 @@ import torch
 # --- 1. CONFIGURATION ---
 original_audio = "audio1421884911.m4a"
 audio_file = original_audio.replace(".m4a", ".wav")
+MIN_FREE_VRAM_GB = 4.0
+
 if torch.cuda.is_available():
-    device_idx = torch.cuda.current_device()
-    free_vram, total_vram = torch.cuda.mem_get_info(device_idx)
-    free_gb = free_vram / (1024**3)
-    total_gb = total_vram / (1024**3)
-    batch_size = max(4, min(32, int(free_gb / 2)))
-    print(f"gpu    = {device_idx} ({total_gb:.1f}GB total, {free_gb:.1f}GB free)")
+    best_idx, best_free_gb, best_total_gb = 0, 0.0, 0.0
+    for i in range(torch.cuda.device_count()):
+        free, total = torch.cuda.mem_get_info(i)
+        free_gb = free / (1024**3)
+        total_gb = total / (1024**3)
+        print(f"gpu    = {i} ({total_gb:.1f}GB total, {free_gb:.1f}GB free)")
+        if free_gb > best_free_gb:
+            best_idx, best_free_gb, best_total_gb = i, free_gb, total_gb
+    if best_free_gb < MIN_FREE_VRAM_GB:
+        print(f"ERROR: No GPU has {MIN_FREE_VRAM_GB}GB free VRAM. Best available: GPU {best_idx} with {best_free_gb:.1f}GB. Try again later.")
+        exit(1)
+    device_idx = best_idx
+    batch_size = max(4, min(32, int(best_free_gb / 2)))
+    print(f"Using GPU {device_idx} with {best_free_gb:.1f}GB free — batch_size = {batch_size}")
 else:
+    device_idx = None
     batch_size = 4
-print(f"batch_size = {batch_size}")
+    print(f"batch_size = {batch_size}")
 language_code = "pt"
-device = "cuda"
+device = f"cuda:{device_idx}" if device_idx is not None else "cpu"
 compute_type = "float16"
 config = configparser.ConfigParser()
 config.read(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".local", "config.ini"))

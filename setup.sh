@@ -18,7 +18,7 @@ echo "2. Installing WhisperX..."
 .local/venv/bin/pip install whisperx
 
 echo "3. Removing duplicate PyTorch packages to use system versions..."
-.local/venv/bin/pip uninstall -y torch torchvision torchaudio triton nvidia-nccl-cu12
+.local/venv/bin/pip uninstall -y torch torchvision torchaudio triton nvidia-nccl-cu12 torchcodec
 
 echo "4. Installing FFMPEG..."
 

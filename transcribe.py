@@ -1,4 +1,6 @@
 import os
+import warnings
+warnings.filterwarnings("ignore", message="torchcodec is not installed correctly")
 print(f"memory = {int(os.environ.get('MEM_LIMIT'))/(1024**3)}GB")
 print(f"cores  = {os.environ.get('CPU_LIMIT')}")
 import torch
@@ -47,7 +49,7 @@ hf_token = config["credentials"]["hf_token"]
 # --- 1.5 AUTO-CONVERT TO WAV ---
 # Converts .m4a to 16kHz mono .wav, bypassing torchcodec
 if not os.path.exists(audio_file):
-    print("Converting M4A to WAV to bypass torchcodec...")
+    print("Converting audio to WAV format...")
     os.system(
         f"ffmpeg -y -i {original_audio} -ar 16000 -ac 1 -c:a pcm_s16le {audio_file}"
     )

@@ -1,8 +1,10 @@
 import os
+import logging
 import warnings
 warnings.filterwarnings("ignore", message=r"\ntorchcodec is not installed")
 warnings.filterwarnings("ignore", message=r"TensorFloat-32")
 warnings.filterwarnings("ignore", message=r"std\(\): degrees of freedom is <= 0")
+logging.getLogger("lightning.pytorch.utilities.upgrade_checkpoint").setLevel(logging.ERROR)
 print(f"memory = {int(os.environ.get('MEM_LIMIT'))/(1024**3)}GB")
 print(f"cores  = {os.environ.get('CPU_LIMIT')}")
 import torch

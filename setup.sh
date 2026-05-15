@@ -20,10 +20,6 @@ echo "2. Installing WhisperX..."
 echo "3. Removing duplicate PyTorch packages to use system versions..."
 .local/venv/bin/pip uninstall -y torch torchvision torchaudio triton nvidia-nccl-cu12 torchcodec
 
-echo "3a. Upgrading WhisperX Lightning checkpoint format..."
-CHECKPOINT=$(.local/venv/bin/python -c "import os, whisperx; print(os.path.join(os.path.dirname(whisperx.__file__), 'assets', 'pytorch_model.bin'))")
-.local/venv/bin/python -m lightning.pytorch.utilities.upgrade_checkpoint "$CHECKPOINT"
-
 echo "4. Installing FFMPEG..."
 
 # 1. Create a local bin directory

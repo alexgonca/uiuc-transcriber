@@ -15,7 +15,7 @@ import torch
 # --- 1. CONFIGURATION ---
 original_audio = "audio1421884911.m4a"
 audio_file = original_audio.replace(".m4a", ".wav")
-batch_size = 32
+batch_size = 8
 language_code = "pt"
 device = "cuda"
 compute_type = "float16"

@@ -1,6 +1,6 @@
 import os
 import warnings
-warnings.filterwarnings("ignore", message="torchcodec is not installed correctly")
+warnings.filterwarnings("ignore", category=UserWarning, module="pyannote.audio.core.io")
 print(f"memory = {int(os.environ.get('MEM_LIMIT'))/(1024**3)}GB")
 print(f"cores  = {os.environ.get('CPU_LIMIT')}")
 import torch

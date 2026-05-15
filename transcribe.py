@@ -1,4 +1,5 @@
 import os
+import sys
 import logging
 import warnings
 warnings.filterwarnings("ignore", message=r"\ntorchcodec is not installed")
@@ -15,16 +16,31 @@ import torch
 print("PyTorch Version:", torch.__version__)
 print("GPU Available:", torch.cuda.is_available())
 
-
 import configparser
+import yaml
 import whisperx
 from whisperx.diarize import DiarizationPipeline
 import gc
 import torch
 
 # --- 1. CONFIGURATION ---
-original_audio = "audio1421884911.m4a"
-audio_file = original_audio.replace(".m4a", ".wav")
+if len(sys.argv) < 2:
+    print("Usage: transcribe.py <audio-folder>")
+    sys.exit(1)
+
+audio_folder = sys.argv[1]
+config_path = os.path.join(audio_folder, "config.yml")
+
+with open(config_path, "r") as f:
+    cfg = yaml.safe_load(f)
+
+original_audio = os.path.join(audio_folder, cfg["audio-file"])
+audio_file = os.path.splitext(original_audio)[0] + ".wav"
+language_code = cfg["language"]
+num_speakers = len(cfg["participants"])
+my_prompt = cfg["prompt"]
+transcript_path = os.path.join(audio_folder, "transcript.txt")
+
 MIN_FREE_VRAM_GB = 4.0
 
 if torch.cuda.is_available():
@@ -38,7 +54,7 @@ if torch.cuda.is_available():
             best_idx, best_free_gb, best_total_gb = i, free_gb, total_gb
     if best_free_gb < MIN_FREE_VRAM_GB:
         print(f"ERROR: No GPU has {MIN_FREE_VRAM_GB}GB free VRAM. Best available: GPU {best_idx} with {best_free_gb:.1f}GB. Try again later.")
-        exit(1)
+        sys.exit(1)
     device_idx = best_idx
     torch.cuda.set_device(device_idx)
     batch_size = max(4, min(32, int(best_free_gb / 2)))
@@ -47,15 +63,14 @@ else:
     device_idx = None
     batch_size = 4
     print(f"batch_size = {batch_size}")
-language_code = "pt"
+
 device = "cuda" if device_idx is not None else "cpu"
 compute_type = "float16"
-config = configparser.ConfigParser()
-config.read(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".local", "config.ini"))
-hf_token = config["credentials"]["hf_token"]
+creds = configparser.ConfigParser()
+creds.read(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".local", "config.ini"))
+hf_token = creds["credentials"]["hf_token"]
 
 # --- 1.5 AUTO-CONVERT TO WAV ---
-# Converts .m4a to 16kHz mono .wav, bypassing torchcodec
 if not os.path.exists(audio_file):
     print("Converting audio to WAV format...")
     os.system(
@@ -63,17 +78,8 @@ if not os.path.exists(audio_file):
     )
     print("Conversion complete!")
 
-# --- 2. PROMPT & MODEL SETUP ---
-my_prompt = (
-    "Uma conversa entre duas brasileiras chamadas Renata e Julia Leitão. "
-    "Julia é nutricionista e influenciadora. Ela tem falado na internet sobre remédios para perda de peso como Ozempic, Mounjaro e Wegovy. "
-    "Renata é doutoranda em comunicação na University of Illinois Urbana-Champaign. "
-    "Elas conversaram sobre credibilidade de criadores de conteúdo ao falar sobre remédios para perda de peso na internet."
-)
-
-my_asr_options = {
-    "initial_prompt": my_prompt
-}
+# --- 2. MODEL SETUP ---
+my_asr_options = {"initial_prompt": my_prompt}
 
 # --- 3. TRANSCRIPTION ---
 print("Loading transcription model on GPU...")
@@ -81,7 +87,7 @@ model = whisperx.load_model(
     "large-v3",
     device,
     compute_type=compute_type,
-    language=language_code, # Now it won't waste time guessing!
+    language=language_code,
     asr_options=my_asr_options
 )
 
@@ -92,36 +98,51 @@ print("Transcribing...")
 result = model.transcribe(audio, batch_size=batch_size)
 print("Transcription complete!")
 
-# Free up GPU memory
 del model
 gc.collect()
 torch.cuda.empty_cache()
 
-# --- 4. ALIGNMENT (Maps words to exact millisecond timestamps) ---
+# --- 4. ALIGNMENT ---
 print("Loading alignment model...")
 model_a, metadata = whisperx.load_align_model(language_code=language_code, device=device)
 
 print("Aligning...")
 result = whisperx.align(result["segments"], model_a, metadata, audio, device, return_char_alignments=False)
 
-# Free up GPU memory
 del model_a
 gc.collect()
 torch.cuda.empty_cache()
 
-# --- 5. DIARIZATION (Who is speaking when) ---
+# --- 5. DIARIZATION ---
 print("Loading diarization model...")
 diarize_model = DiarizationPipeline(token=hf_token, device=device)
 
 print("Diarizing (this may take a moment)...")
-# Note: min_speakers=2 and max_speakers=2 forces the model to look for exactly two people!
-diarize_segments = diarize_model(audio, min_speakers=2, max_speakers=2)
+diarize_segments = diarize_model(audio, min_speakers=num_speakers, max_speakers=num_speakers)
 
 print("Assigning speakers to text...")
 result = whisperx.assign_word_speakers(diarize_segments, result)
 
-# --- 6. PRINT RESULTS ---
+# --- 6. SAVE RESULTS ---
+speakers_found = sorted({seg.get("speaker", "UNKNOWN") for seg in result["segments"]})
+participants = cfg["participants"]
+
+lines = []
+lines.append("# Speaker mapping (assign manually):")
+for i, speaker in enumerate(speakers_found):
+    guess = participants[i] if i < len(participants) else "?"
+    lines.append(f"#   {speaker} -> {guess}?")
+lines.append("")
+
 for segment in result["segments"]:
     speaker = segment.get("speaker", "UNKNOWN")
     text = segment.get("text", "")
-    print(f"[{speaker}]: {text}")
+    lines.append(f"[{speaker}]: {text}")
+
+transcript = "\n".join(lines)
+print(transcript)
+
+with open(transcript_path, "w", encoding="utf-8") as f:
+    f.write(transcript + "\n")
+
+print(f"\nTranscript saved to {transcript_path}")

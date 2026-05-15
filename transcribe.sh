@@ -1,1 +1,1 @@
-.venv/bin/python transcribe.py %1
+.local/venv/bin/python transcribe.py %1

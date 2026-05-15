@@ -6,28 +6,29 @@ print("PyTorch Version:", torch.__version__)
 print("GPU Available:", torch.cuda.is_available())
 
 # Add the local bin directory to the system PATH so WhisperX can find FFmpeg
-os.environ["PATH"] += os.pathsep + os.path.expanduser("~/.local/bin")
+os.environ["PATH"] += os.pathsep + os.path.join(os.path.dirname(os.path.abspath(__file__)), ".local", "bin")
 
-import configparser
 import whisperx
 from whisperx.diarize import DiarizationPipeline
 import gc
 import torch
 
 # --- 1. CONFIGURATION ---
-audio_file = "audio1421884911.m4a"
-batch_size = 32         # Increased for H200!
+original_audio = "audio1421884911.m4a"
+audio_file = original_audio.replace(".m4a", ".wav")
+batch_size = 32
 language_code = "pt"
-device = "cuda"         # Changed to use the H200 GPU
-compute_type = "float16" # Changed for max accuracy & speed on H200
-hf_token = "MY TOKEN" # Replace with your actual token
+device = "cuda"
+compute_type = "float16"
+hf_token = "MY TOKEN"  # Replace with your actual token
 
 # --- 1.5 AUTO-CONVERT TO WAV ---
-# This converts the .m4a to a 16kHz mono .wav file, entirely bypassing torchcodec!
+# Converts .m4a to 16kHz mono .wav, bypassing torchcodec
 if not os.path.exists(audio_file):
     print("Converting M4A to WAV to bypass torchcodec...")
-    # The -y flag overwrites, -ar 16000 sets sample rate to 16kHz, -ac 1 makes it Mono
-    os.system(f"ffmpeg -y -i {original_audio} -ar 16000 -ac 1 -c:a pcm_s16le {audio_file}")
+    os.system(
+        f"ffmpeg -y -i {original_audio} -ar 16000 -ac 1 -c:a pcm_s16le {audio_file}"
+    )
     print("Conversion complete!")
 
 # --- 2. PROMPT & MODEL SETUP ---

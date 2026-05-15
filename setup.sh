@@ -3,7 +3,7 @@
 mkdir -p .local/
 
 echo "1. Creating virtual environment..."
-python -m venv .local/venv/ --system-site-packages
+python3 -m venv .local/venv/ --system-site-packages
 
 echo "2. Installing WhisperX..."
 .local/venv/bin/pip install whisperx

@@ -2,6 +2,14 @@
 
 mkdir -p .local/
 
+echo "Enter your Hugging Face token:"
+read -r hf_token
+cat > .local/config.ini <<EOF
+[credentials]
+hf_token = $hf_token
+EOF
+echo "Token saved to .local/config.ini"
+
 echo "1. Creating virtual environment..."
 python3 -m venv .local/venv/ --system-site-packages
 

@@ -8,6 +8,7 @@ print("GPU Available:", torch.cuda.is_available())
 # Add the local bin directory to the system PATH so WhisperX can find FFmpeg
 os.environ["PATH"] += os.pathsep + os.path.join(os.path.dirname(os.path.abspath(__file__)), ".local", "bin")
 
+import configparser
 import whisperx
 from whisperx.diarize import DiarizationPipeline
 import gc
@@ -20,7 +21,9 @@ batch_size = 32
 language_code = "pt"
 device = "cuda"
 compute_type = "float16"
-hf_token = "MY TOKEN"  # Replace with your actual token
+config = configparser.ConfigParser()
+config.read(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".local", "config.ini"))
+hf_token = config["credentials"]["hf_token"]
 
 # --- 1.5 AUTO-CONVERT TO WAV ---
 # Converts .m4a to 16kHz mono .wav, bypassing torchcodec

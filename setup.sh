@@ -3,7 +3,8 @@
 mkdir -p .local/
 
 echo "Enter your Hugging Face token:"
-read -r hf_token
+read -rs hf_token
+echo
 cat > .local/config.ini <<EOF
 [credentials]
 hf_token = $hf_token

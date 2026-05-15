@@ -35,7 +35,9 @@ with open(config_path, "r") as f:
     cfg = yaml.safe_load(f)
 
 original_audio = os.path.join(audio_folder, cfg["audio-file"])
-audio_file = os.path.splitext(original_audio)[0] + ".wav"
+_tmp_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".local", "tmp")
+os.makedirs(_tmp_dir, exist_ok=True)
+audio_file = os.path.join(_tmp_dir, os.path.splitext(os.path.basename(original_audio))[0] + ".wav")
 language_code = cfg["language"]
 num_speakers = len(cfg["participants"])
 my_prompt = cfg["prompt"]
@@ -74,7 +76,7 @@ hf_token = creds["credentials"]["hf_token"]
 if not os.path.exists(audio_file):
     print("Converting audio to WAV format...")
     os.system(
-        f"ffmpeg -y -i {original_audio} -ar 16000 -ac 1 -c:a pcm_s16le {audio_file}"
+        f'ffmpeg -y -i "{original_audio}" -ar 16000 -ac 1 -c:a pcm_s16le "{audio_file}"'
     )
     print("Conversion complete!")
 
@@ -146,3 +148,6 @@ with open(transcript_path, "w", encoding="utf-8") as f:
     f.write(transcript + "\n")
 
 print(f"\nTranscript saved to {transcript_path}")
+
+os.remove(audio_file)
+print("Temporary WAV file removed.")

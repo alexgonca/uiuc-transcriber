@@ -30,6 +30,7 @@ if torch.cuda.is_available():
         print(f"ERROR: No GPU has {MIN_FREE_VRAM_GB}GB free VRAM. Best available: GPU {best_idx} with {best_free_gb:.1f}GB. Try again later.")
         exit(1)
     device_idx = best_idx
+    torch.cuda.set_device(device_idx)
     batch_size = max(4, min(32, int(best_free_gb / 2)))
     print(f"Using GPU {device_idx} with {best_free_gb:.1f}GB free — batch_size = {batch_size}")
 else:
@@ -37,7 +38,7 @@ else:
     batch_size = 4
     print(f"batch_size = {batch_size}")
 language_code = "pt"
-device = f"cuda:{device_idx}" if device_idx is not None else "cpu"
+device = "cuda" if device_idx is not None else "cpu"
 compute_type = "float16"
 config = configparser.ConfigParser()
 config.read(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".local", "config.ini"))

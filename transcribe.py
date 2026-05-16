@@ -129,19 +129,39 @@ result = whisperx.assign_word_speakers(diarize_segments, result)
 speakers_found = sorted({seg.get("speaker", "UNKNOWN") for seg in result["segments"]})
 participants = cfg["participants"]
 
-lines = []
-lines.append("# Speaker mapping (assign manually):")
+# YAML front matter with speaker mapping
+front_matter_lines = ["---", "speakers:"]
 for i, speaker in enumerate(speakers_found):
     guess = participants[i] if i < len(participants) else "?"
-    lines.append(f"#   {speaker} -> {guess}?")
-lines.append("")
+    front_matter_lines.append(f"  {speaker}: {guess}?")
+front_matter_lines.append("---")
 
+# Merge consecutive segments from the same speaker into paragraphs
+paragraphs = []
 for segment in result["segments"]:
     speaker = segment.get("speaker", "UNKNOWN")
-    text = segment.get("text", "")
-    lines.append(f"[{speaker}]: {text}")
+    text = segment.get("text", "").strip()
+    end = segment.get("end", 0.0)
+    if paragraphs and paragraphs[-1]["speaker"] == speaker:
+        paragraphs[-1]["text"] += " " + text
+        paragraphs[-1]["end"] = end
+    else:
+        paragraphs.append({"speaker": speaker, "text": text, "end": end})
 
-transcript = "\n".join(lines)
+
+def _fmt_ts(seconds):
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
+    s = seconds % 60
+    return f"{h}:{m:02d}:{s:04.1f}"
+
+
+body_lines = []
+for para in paragraphs:
+    ts = _fmt_ts(para["end"])
+    body_lines.append(f"**{para['speaker']}:** {para['text']} [{ts}]")
+
+transcript = "\n".join(front_matter_lines) + "\n\n" + "\n\n".join(body_lines)
 print(transcript)
 
 with open(transcript_path, "w", encoding="utf-8") as f:

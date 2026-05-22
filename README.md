@@ -1,5 +1,15 @@
 This repository uses [Illinois Computes Research Notebooks](https://jupyter.ncsa.illinois.edu/), OpenAI's [Whisper](https://openai.com/index/whisper/) for transcription, and [DiariZen](https://github.com/BUTSpeechFIT/DiariZen) for speaker diarization.
 
+# Starting a JupyterLab Session
+
+Do this every time before installing or running a transcription:
+
+1. Visit [https://jupyter.ncsa.illinois.edu/](https://jupyter.ncsa.illinois.edu/).
+2. Click **Sign in with CILogon**.
+3. For **Environment**, choose **Jupyter - PyTorch**.
+4. For **Resource**, choose **H200 141GB VRAM GPU, 10CPU/32GB**.
+5. Click **Start**.
+
 # Installation
 
 1. Open a terminal on JupyterLab and clone the repository:
@@ -30,7 +40,8 @@ language: pt
 participants:
   - Alice
   - Bob
-prompt: "Entrevista sobre..."
+prompt: > 
+  "Entrevista sobre..."
 ```
 
 - `audio-file`: filename of your recording (any format FFmpeg can read)

@@ -163,16 +163,13 @@ for para in paragraphs:
     body_lines.append(f"**{para['speaker']}:** {para['text']} [{ts}]")
 
 transcript = "\n".join(front_matter_lines) + "\n\n" + "\n\n".join(body_lines)
-print(transcript)
 
 with open(transcript_path, "w", encoding="utf-8") as f:
     f.write(transcript + "\n")
 
-print(f"\nTranscript saved to {transcript_path}")
-
 docx_path = os.path.splitext(transcript_path)[0] + ".docx"
 pypandoc.convert_file(transcript_path, "docx", outputfile=docx_path)
-print(f"Transcript saved to {docx_path}")
+print(f"\nTranscript saved successfully:\n  {transcript_path}\n  {docx_path}")
 
 os.remove(audio_file)
 print("Temporary WAV file removed.")

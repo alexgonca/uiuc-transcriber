@@ -17,6 +17,7 @@ print("PyTorch Version:", torch.__version__)
 print("GPU Available:", torch.cuda.is_available())
 
 import yaml
+import pypandoc
 import whisperx
 from whisperx.diarize import DiarizationPipeline
 import gc
@@ -40,7 +41,7 @@ audio_file = os.path.join(_tmp_dir, os.path.splitext(os.path.basename(original_a
 language_code = cfg["language"]
 num_speakers = len(cfg["participants"])
 my_prompt = cfg["prompt"]
-transcript_path = os.path.join(audio_folder, "transcript.txt")
+transcript_path = os.path.join(audio_folder, os.path.basename(os.path.abspath(audio_folder)) + ".md")
 
 MIN_FREE_VRAM_GB = 4.0
 
@@ -168,6 +169,10 @@ with open(transcript_path, "w", encoding="utf-8") as f:
     f.write(transcript + "\n")
 
 print(f"\nTranscript saved to {transcript_path}")
+
+docx_path = os.path.splitext(transcript_path)[0] + ".docx"
+pypandoc.convert_file(transcript_path, "docx", outputfile=docx_path)
+print(f"Transcript saved to {docx_path}")
 
 os.remove(audio_file)
 print("Temporary WAV file removed.")

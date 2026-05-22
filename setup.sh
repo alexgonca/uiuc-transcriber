@@ -16,7 +16,7 @@ echo "1. Creating virtual environment..."
 python3 -m venv .local/venv/ --system-site-packages
 
 echo "2. Installing WhisperX and dependencies..."
-.local/venv/bin/pip install whisperx pyyaml
+.local/venv/bin/pip install whisperx pyyaml pypandoc
 
 echo "3. Removing duplicate PyTorch packages to use system versions..."
 .local/venv/bin/pip uninstall -y torch torchvision torchaudio triton nvidia-nccl-cu12 torchcodec

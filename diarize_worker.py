@@ -1,8 +1,14 @@
 import sys
 import json
 import torch
-import torch.torch_version
-torch.serialization.add_safe_globals([torch.torch_version.TorchVersion])
+
+# PyTorch 2.6+ defaults weights_only=True, which breaks DiariZen's pre-2.6
+# checkpoints. Patch torch.load before any imports trigger checkpoint loading.
+_orig_load = torch.load
+def _load(*args, **kwargs):
+    kwargs.setdefault("weights_only", False)
+    return _orig_load(*args, **kwargs)
+torch.load = _load
 
 from diarizen.pipelines.inference import DiariZenPipeline
 

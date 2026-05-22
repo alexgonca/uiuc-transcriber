@@ -32,6 +32,12 @@ pipeline = DiariZenPipeline.from_pretrained(
 pipeline.min_speakers = num_speakers
 pipeline.max_speakers = num_speakers
 
+if torch.cuda.is_available():
+    free_gb = torch.cuda.mem_get_info(0)[0] / (1024 ** 3)
+    batch_size = max(1, min(32, int(free_gb * 2)))
+    pipeline._segmentation.batch_size = batch_size
+    print(f"DiariZen batch_size set to {batch_size} ({free_gb:.1f}GB free VRAM)")
+
 diar_results = pipeline(audio_file)
 
 segments = [

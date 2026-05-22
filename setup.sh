@@ -27,9 +27,33 @@ if [ -d .local/diarizen-src ]; then
     echo "DiariZen already installed — skipping."
 else
     git clone --recurse-submodules https://github.com/BUTSpeechFIT/DiariZen.git .local/diarizen-src
-    python3 -m venv .local/diarizen-venv/
-    .local/diarizen-venv/bin/pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121
-    grep -Ev "^(torch|torchvision|torchaudio|jupyter|notebook|ipython|ipykernel|pre-commit|flit|nodeenv|virtualenv)" .local/diarizen-src/requirements.txt > /tmp/diarizen-reqs.txt
+
+    # Patch AudioMetaData import removed from torchaudio's top-level namespace in newer versions
+    cat > /tmp/patch_diarizen.py << 'PYEOF'
+import pathlib
+path = pathlib.Path('.local/diarizen-src/pyannote-audio/pyannote/audio/tasks/segmentation/mixins.py')
+content = path.read_text()
+old = 'from torchaudio import AudioMetaData'
+new = (
+    'try:\n'
+    '    from torchaudio import AudioMetaData\n'
+    'except ImportError:\n'
+    '    import dataclasses as _dc\n'
+    '    @_dc.dataclass\n'
+    '    class AudioMetaData:\n'
+    '        sample_rate: int\n'
+    '        num_frames: int\n'
+    '        num_channels: int\n'
+    '        bits_per_sample: int = 0\n'
+    '        encoding: str = ""\n'
+)
+path.write_text(content.replace(old, new))
+print("Patched AudioMetaData import.")
+PYEOF
+    python3 /tmp/patch_diarizen.py && rm /tmp/patch_diarizen.py
+
+    python3 -m venv .local/diarizen-venv/ --system-site-packages
+    grep -Ev "^(torch|torchvision|torchaudio|nvidia|jupyter|notebook|ipython|ipykernel|pre-commit|flit|nodeenv|virtualenv)" .local/diarizen-src/requirements.txt > /tmp/diarizen-reqs.txt
     .local/diarizen-venv/bin/pip install -r /tmp/diarizen-reqs.txt && rm /tmp/diarizen-reqs.txt
     .local/diarizen-venv/bin/pip install -e ".local/diarizen-src/pyannote-audio"
     .local/diarizen-venv/bin/pip install -e ".local/diarizen-src/"

@@ -82,7 +82,7 @@ if not os.path.exists(audio_file):
     print("Conversion complete!")
 
 # --- 2. MODEL SETUP ---
-my_asr_options = {"initial_prompt": my_prompt}
+my_asr_options = {"initial_prompt": my_prompt, "beam_size": 10}
 
 # --- 3. TRANSCRIPTION ---
 print("Loading transcription model on GPU...")

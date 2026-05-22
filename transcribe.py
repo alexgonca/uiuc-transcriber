@@ -118,7 +118,9 @@ torch.cuda.empty_cache()
 
 # --- 5. DIARIZATION ---
 print("Loading diarization model...")
-diarize_model = DiarizationPipeline(token=hf_token, device=device)
+diarize_model = DiarizationPipeline(
+    token=hf_token, device=device, model_name="pyannote/speaker-diarization-3.1"
+)
 
 print("Diarizing (this may take a moment)...")
 diarize_segments = diarize_model(audio, min_speakers=num_speakers, max_speakers=num_speakers)

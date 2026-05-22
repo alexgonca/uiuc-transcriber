@@ -70,10 +70,6 @@ else:
 
 device = "cuda" if device_idx is not None else "cpu"
 compute_type = "float16"
-settings_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "settings.yml")
-with open(settings_path, "r") as f:
-    settings = yaml.safe_load(f)
-hf_token = settings["hf_token"]
 
 # --- 1.5 AUTO-CONVERT TO WAV ---
 if not os.path.exists(audio_file):

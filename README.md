@@ -1,31 +1,57 @@
-This repository uses [Illinois Computes Research Notebooks](https://jupyter.ncsa.illinois.edu/) and OpenAI's [Whisper](https://openai.com/index/whisper/) to transcribe texts in different languages.
+This repository uses [Illinois Computes Research Notebooks](https://jupyter.ncsa.illinois.edu/), OpenAI's [Whisper](https://openai.com/index/whisper/) for transcription, and [DiariZen](https://github.com/BUTSpeechFIT/DiariZen) for speaker diarization.
 
 # Installation
 
-1. Open a terminal on JupyterLab and clone the repository with these commands:
+1. Open a terminal on JupyterLab and clone the repository:
 
 ```bash
 git clone https://github.com/alexgonca/uiuc-transcriber.git
 git config --global --add safe.directory ~/uiuc-transcriber
 ```
 
-2. Create Hugging Face access token:
-   1. Visit [huggingface.co]. If you don't have a user on the platform, create one. It is free.
-   2. Click on your profile (top right) -> Settings -> Access Tokens -> Create new token.
-   3. Choose "Fine-grained" (default).
-   4. Fill out Token name: 'Diarization'.
-   5. Select "Read access to contents of all public gated repos you can access".
-   6. Scroll down and click on "Create Token".
-   7. Make sure you "copy" the access token. We will need it in the next step of this tutorial.
+2. Run the setup script:
 
-3. Go back to the JupyterLab terminal. Execute this command: ```./setup.sh```
-
-4. Open file ``settings.yml`` on JupyterLab and replace `paste-your-hugging-face-token-here` with the Hugging Face access token that you copied in step 2.
-
-# Advanced
-
-If you want to add the transcription virtual environment (venv) to Jupyter Notebook, open a terminal on JupyterLab, navigate to the folder where the venv is installed (in this example below, `whisperx_env`), and execute the following command:
-
-```python
-./whisperx_env/bin/python -m ipykernel install --user --name whisperx_env --display-name "WhisperX (System PyTorch)"
+```bash
+cd uiuc-transcriber
+./setup.sh
 ```
+
+This will create two virtual environments (`.local/venv/` for WhisperX and `.local/diarizen-venv/` for DiariZen), install all dependencies, and download a static FFmpeg binary. No accounts or API tokens are required.
+
+# Usage
+
+1. Create a folder for your recording (e.g. `my-interview/`).
+
+2. Place your audio file inside it and create a `session.yml` file with the following structure:
+
+```yaml
+audio-file: recording.mp4
+language: pt
+participants:
+  - Alice
+  - Bob
+prompt: "Entrevista sobre..."
+```
+
+- `audio-file`: filename of your recording (any format FFmpeg can read)
+- `language`: [ISO 639-1 language code](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes) (e.g. `pt` for Portuguese, `en` for English)
+- `participants`: list of speaker names in the expected order
+- `prompt`: short description of the recording in the target language — helps Whisper stay in the correct language and vocabulary
+
+3. Run the transcription:
+
+```bash
+./transcribe.sh my-interview
+```
+
+4. The transcript will be saved as `my-interview/my-interview.md` and `my-interview/my-interview.docx`. The Markdown file includes a YAML front matter with speaker mappings that you can adjust manually.
+
+# Models
+
+| Task | Model |
+|---|---|
+| Transcription | [openai/whisper-large-v3](https://huggingface.co/openai/whisper-large-v3) |
+| Alignment | [jonatasgrosman/wav2vec2-large-xlsr-53-portuguese](https://huggingface.co/jonatasgrosman/wav2vec2-large-xlsr-53-portuguese) (for `pt`) |
+| Diarization | [BUT-FIT/diarizen-wavlm-large-s80-md-v2](https://huggingface.co/BUT-FIT/diarizen-wavlm-large-s80-md-v2) |
+
+All models are downloaded automatically on first use. None require authentication.

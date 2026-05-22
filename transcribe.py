@@ -132,6 +132,9 @@ print("Assigning speakers to text...")
 result = whisperx.assign_word_speakers(diarize_segments, result)
 
 # --- 6. SAVE RESULTS ---
+for seg in result["segments"]:
+    if not isinstance(seg.get("speaker"), str):
+        seg["speaker"] = "UNKNOWN"
 speakers_found = sorted({seg.get("speaker", "UNKNOWN") for seg in result["segments"]})
 participants = cfg["participants"]
 

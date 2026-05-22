@@ -1,5 +1,7 @@
 import os
 import sys
+import json
+import subprocess
 import logging
 import warnings
 warnings.filterwarnings("ignore", message=r"\ntorchcodec is not installed")
@@ -17,9 +19,9 @@ print("PyTorch Version:", torch.__version__)
 print("GPU Available:", torch.cuda.is_available())
 
 import yaml
+import pandas as pd
 import pypandoc
 import whisperx
-from whisperx.diarize import DiarizationPipeline
 import gc
 import torch
 
@@ -117,11 +119,18 @@ gc.collect()
 torch.cuda.empty_cache()
 
 # --- 5. DIARIZATION ---
-print("Loading diarization model...")
-diarize_model = DiarizationPipeline(token=hf_token, device=device)
-
-print("Diarizing (this may take a moment)...")
-diarize_segments = diarize_model(audio, min_speakers=num_speakers, max_speakers=num_speakers)
+print("Diarizing with DiariZen (this may take a moment)...")
+_diarize_json = os.path.join(_tmp_dir, "diarization.json")
+_base = os.path.dirname(os.path.abspath(__file__))
+_diarizen_python = os.path.join(_base, ".local", "diarizen-venv", "bin", "python")
+_worker = os.path.join(_base, "diarize_worker.py")
+subprocess.run(
+    [_diarizen_python, _worker, audio_file, str(num_speakers), _diarize_json],
+    check=True
+)
+with open(_diarize_json) as f:
+    diarize_segments = pd.DataFrame(json.load(f))
+os.remove(_diarize_json)
 
 print("Assigning speakers to text...")
 result = whisperx.assign_word_speakers(diarize_segments, result)

@@ -28,8 +28,9 @@ if [ -d .local/diarizen-src ]; then
 else
     git clone --recurse-submodules https://github.com/BUTSpeechFIT/DiariZen.git .local/diarizen-src
     python3 -m venv .local/diarizen-venv/
-    .local/diarizen-venv/bin/pip install torch==2.1.1 torchaudio==2.1.1 --index-url https://download.pytorch.org/whl/cu121
-    .local/diarizen-venv/bin/pip install -r .local/diarizen-src/requirements.txt
+    .local/diarizen-venv/bin/pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121
+    grep -Ev "^(torch|torchvision|torchaudio)" .local/diarizen-src/requirements.txt > /tmp/diarizen-reqs.txt
+    .local/diarizen-venv/bin/pip install -r /tmp/diarizen-reqs.txt && rm /tmp/diarizen-reqs.txt
     .local/diarizen-venv/bin/pip install -e ".local/diarizen-src/pyannote-audio"
     .local/diarizen-venv/bin/pip install -e ".local/diarizen-src/"
 fi

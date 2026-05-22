@@ -27,9 +27,9 @@ if [ -d .local/diarizen-src ]; then
     echo "DiariZen already installed — skipping."
 else
     git clone --recurse-submodules https://github.com/BUTSpeechFIT/DiariZen.git .local/diarizen-src
-    python3 -m venv .local/diarizen-venv/ --system-site-packages
+    python3 -m venv .local/diarizen-venv/
+    .local/diarizen-venv/bin/pip install torch==2.1.1 torchaudio==2.1.1 --index-url https://download.pytorch.org/whl/cu121
     .local/diarizen-venv/bin/pip install -r .local/diarizen-src/requirements.txt
-    .local/diarizen-venv/bin/pip uninstall -y torch torchvision torchaudio triton
     .local/diarizen-venv/bin/pip install -e ".local/diarizen-src/pyannote-audio"
     .local/diarizen-venv/bin/pip install -e ".local/diarizen-src/"
 fi

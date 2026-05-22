@@ -18,9 +18,9 @@ git config --global --add safe.directory ~/uiuc-transcriber
    6. Scroll down and click on "Create Token".
    7. Make sure you "copy" the access token. We will need it in the next step of this tutorial.
 
-3. Go back to the JupyterLab terminal. Execute this command: ```./setup.sh``` When it requests the Hugging Face access token, paste the value you copied in the previous step.
+3. Go back to the JupyterLab terminal. Execute this command: ```./setup.sh```
 
-4. 
+4. Open file ``settings.yml`` on JupyterLab and replace `paste-your-hugging-face-token-here` with the Hugging Face access token that you copied in step 2.
 
 # Advanced
 

@@ -6,7 +6,7 @@ if [ -f settings.yml ]; then
     echo "WARNING: settings.yml already exists — skipping creation. Edit it manually if you need to update your token."
 else
     cat > settings.yml <<EOF
-hf_token: "paste-your-hugging-face-token-here"
+hf_token: paste-your-hugging-face-token-here
 EOF
     chmod 600 settings.yml
     echo "settings.yml created. Open it and replace the placeholder with your Hugging Face token before running transcriptions."

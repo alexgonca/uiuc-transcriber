@@ -1,12 +1,18 @@
 import sys
 import json
+import torch
+import torch.torch_version
+torch.serialization.add_safe_globals([torch.torch_version.TorchVersion])
+
 from diarizen.pipelines.inference import DiariZenPipeline
 
 audio_file = sys.argv[1]
 num_speakers = int(sys.argv[2])
 output_path = sys.argv[3]
 
-pipeline = DiariZenPipeline.from_pretrained("BUT-FIT/diarizen-wavlm-large-s80-md-v2")
+pipeline = DiariZenPipeline.from_pretrained(
+    "BUT-FIT/diarizen-wavlm-large-s80-md-v2"
+)
 pipeline.min_speakers = num_speakers
 pipeline.max_speakers = num_speakers
 

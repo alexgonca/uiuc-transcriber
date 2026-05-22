@@ -29,7 +29,7 @@ else
     git clone --recurse-submodules https://github.com/BUTSpeechFIT/DiariZen.git .local/diarizen-src
     python3 -m venv .local/diarizen-venv/
     .local/diarizen-venv/bin/pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121
-    grep -Ev "^(torch|torchvision|torchaudio)" .local/diarizen-src/requirements.txt > /tmp/diarizen-reqs.txt
+    grep -Ev "^(torch|torchvision|torchaudio|jupyter|notebook|ipython|ipykernel|pre-commit|flit|nodeenv|virtualenv)" .local/diarizen-src/requirements.txt > /tmp/diarizen-reqs.txt
     .local/diarizen-venv/bin/pip install -r /tmp/diarizen-reqs.txt && rm /tmp/diarizen-reqs.txt
     .local/diarizen-venv/bin/pip install -e ".local/diarizen-src/pyannote-audio"
     .local/diarizen-venv/bin/pip install -e ".local/diarizen-src/"

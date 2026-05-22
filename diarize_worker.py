@@ -6,7 +6,7 @@ import torch
 # checkpoints. Patch torch.load before any imports trigger checkpoint loading.
 _orig_load = torch.load
 def _load(*args, **kwargs):
-    kwargs.setdefault("weights_only", False)
+    kwargs["weights_only"] = False
     return _orig_load(*args, **kwargs)
 torch.load = _load
 

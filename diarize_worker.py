@@ -1,6 +1,9 @@
 import sys
 import json
 import torch
+import torchaudio
+import soundfile as sf
+import numpy as np
 
 # PyTorch 2.6+ defaults weights_only=True, which breaks DiariZen's pre-2.6
 # checkpoints. Patch torch.load before any imports trigger checkpoint loading.
@@ -9,6 +12,13 @@ def _load(*args, **kwargs):
     kwargs["weights_only"] = False
     return _orig_load(*args, **kwargs)
 torch.load = _load
+
+# System torchaudio defaults to torchcodec which is not installed.
+# Patch torchaudio.load to use soundfile instead.
+def _sf_load(uri, *args, **kwargs):
+    data, sample_rate = sf.read(uri, dtype="float32", always_2d=True)
+    return torch.from_numpy(data.T), sample_rate
+torchaudio.load = _sf_load
 
 from diarizen.pipelines.inference import DiariZenPipeline
 

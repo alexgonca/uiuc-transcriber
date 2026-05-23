@@ -37,11 +37,12 @@ This will create two virtual environments (`.local/venv/` for WhisperX and `.loc
 ```yaml
 audio-file: recording.mp4
 language: pt
+date: 
 participants:
   - Alice
   - Bob
 prompt: > 
-  "Entrevista sobre..."
+  Entrevista sobre...
 ```
 
 - `audio-file`: filename of your recording (any format FFmpeg can read)

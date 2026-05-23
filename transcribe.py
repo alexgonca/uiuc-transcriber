@@ -3,6 +3,7 @@ import sys
 import json
 import subprocess
 import logging
+import time
 import warnings
 warnings.filterwarnings("ignore", message=r"\ntorchcodec is not installed")
 warnings.filterwarnings("ignore", message=r"TensorFloat-32")
@@ -12,8 +13,12 @@ class _SuppressFilter(logging.Filter):
     def filter(self, record):
         return not any(p in record.getMessage() for p in self._patterns)
 logging.getLogger().addFilter(_SuppressFilter())
-print(f"memory = {int(os.environ.get('MEM_LIMIT'))/(1024**3)}GB")
-print(f"cores  = {os.environ.get('CPU_LIMIT')}")
+t_start = time.time()
+
+_mem_bytes = int(os.environ.get('MEM_LIMIT', 0))
+_cpu_cores = os.environ.get('CPU_LIMIT', '?')
+print(f"memory = {_mem_bytes/(1024**3):.1f}GB")
+print(f"cores  = {_cpu_cores}")
 import torch
 print("PyTorch Version:", torch.__version__)
 print("GPU Available:", torch.cuda.is_available())
@@ -94,9 +99,13 @@ model = whisperx.load_model(
 
 print("Loading audio...")
 audio = whisperx.load_audio(audio_file)
+_SAMPLE_RATE = 16000
+audio_duration_s = len(audio) / _SAMPLE_RATE
 
 print("Transcribing...")
+t_transcribe_start = time.time()
 result = model.transcribe(audio, batch_size=batch_size)
+t_transcribe_end = time.time()
 print("Transcription complete!")
 
 del model
@@ -108,7 +117,9 @@ print("Loading alignment model...")
 model_a, metadata = whisperx.load_align_model(language_code=language_code, device=device)
 
 print("Aligning...")
+t_align_start = time.time()
 result = whisperx.align(result["segments"], model_a, metadata, audio, device, return_char_alignments=False)
+t_align_end = time.time()
 
 del model_a
 gc.collect()
@@ -120,10 +131,12 @@ _diarize_json = os.path.join(_tmp_dir, "diarization.json")
 _base = os.path.dirname(os.path.abspath(__file__))
 _diarizen_python = os.path.join(_base, ".local", "diarizen-venv", "bin", "python")
 _worker = os.path.join(_base, "diarize_worker.py")
+t_diarize_start = time.time()
 subprocess.run(
     [_diarizen_python, _worker, audio_file, str(num_speakers), _diarize_json],
     check=True
 )
+t_diarize_end = time.time()
 with open(_diarize_json) as f:
     diarize_segments = pd.DataFrame(json.load(f))
 os.remove(_diarize_json)
@@ -138,12 +151,45 @@ for seg in result["segments"]:
 speakers_found = sorted({seg.get("speaker", "UNKNOWN") for seg in result["segments"]})
 participants = cfg["participants"]
 
-# YAML front matter with speaker mapping
-front_matter_lines = ["---", "speakers:"]
+def _fmt_dur(seconds):
+    s = int(seconds)
+    h, rem = divmod(s, 3600)
+    m, sec = divmod(rem, 60)
+    return f"{h}:{m:02d}:{sec:02d}"
+
+
+t_end = time.time()
+dur_transcribe = t_transcribe_end - t_transcribe_start
+dur_align = t_align_end - t_align_start
+dur_diarize = t_diarize_end - t_diarize_start
+dur_total = t_end - t_start
+
+_mem_gb = f"{_mem_bytes / (1024**3):.1f}GB" if _mem_bytes else "?"
+
+# YAML front matter with speaker mapping and processing metadata
+front_matter_lines = [
+    "---",
+    "speakers:",
+]
 for i, speaker in enumerate(speakers_found):
     guess = participants[i] if i < len(participants) else "?"
     front_matter_lines.append(f"  {speaker}: {guess}?")
-front_matter_lines.append("---")
+front_matter_lines += [
+    f"audio_duration: \"{_fmt_dur(audio_duration_s)}\"",
+    "processing:",
+    f"  transcription: \"{_fmt_dur(dur_transcribe)}\"",
+    f"  alignment: \"{_fmt_dur(dur_align)}\"",
+    f"  diarization: \"{_fmt_dur(dur_diarize)}\"",
+    f"  total: \"{_fmt_dur(dur_total)}\"",
+    "resources:",
+    "  transcription_and_alignment:",
+    f"    memory: {_mem_gb}",
+    f"    cpu_cores: {_cpu_cores}",
+    "  diarization:",
+    f"    memory: {_mem_gb}",
+    f"    cpu_cores: {_cpu_cores}",
+    "---",
+]
 
 # Merge consecutive segments from the same speaker into paragraphs
 paragraphs = []

@@ -15,8 +15,13 @@ torch.load = _load
 
 # System torchaudio defaults to torchcodec which is not installed.
 # Patch torchaudio.load to use soundfile instead.
-def _sf_load(uri, *args, **kwargs):
-    data, sample_rate = sf.read(uri, dtype="float32", always_2d=True)
+# Must honour frame_offset/num_frames: pyannote-audio calls torchaudio.load
+# with chunk boundaries during segmentation, so ignoring those args feeds the
+# full audio to every chunk and corrupts the diarization output.
+def _sf_load(uri, frame_offset=0, num_frames=-1, *args, **kwargs):
+    stop = None if num_frames < 0 else frame_offset + num_frames
+    data, sample_rate = sf.read(uri, dtype="float32", always_2d=True,
+                                start=frame_offset, stop=stop)
     return torch.from_numpy(data.T), sample_rate
 torchaudio.load = _sf_load
 

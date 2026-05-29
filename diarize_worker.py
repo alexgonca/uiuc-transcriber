@@ -46,15 +46,9 @@ if torch.cuda.is_available():
 diar_results = pipeline(audio_file)
 
 segments = [
-    {"start": turn.start, "end": turn.end, "speaker": speaker}
+    {"start": turn.start, "end": turn.end, "speaker": f"SPEAKER_{speaker:02d}"}
     for turn, _, speaker in diar_results.itertracks(yield_label=True)
 ]
-
-print(f"DiariZen found {len(segments)} segments, "
-      f"speakers: {sorted({s['speaker'] for s in segments})}")
-if segments:
-    for s in segments[:5]:
-        print(f"  {s['speaker']}  {s['start']:.2f}–{s['end']:.2f}")
 
 with open(output_path, "w") as f:
     json.dump(segments, f)

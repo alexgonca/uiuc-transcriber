@@ -50,5 +50,11 @@ segments = [
     for turn, _, speaker in diar_results.itertracks(yield_label=True)
 ]
 
+print(f"DiariZen found {len(segments)} segments, "
+      f"speakers: {sorted({s['speaker'] for s in segments})}")
+if segments:
+    for s in segments[:5]:
+        print(f"  {s['speaker']}  {s['start']:.2f}–{s['end']:.2f}")
+
 with open(output_path, "w") as f:
     json.dump(segments, f)

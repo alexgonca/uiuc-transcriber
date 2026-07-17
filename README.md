@@ -41,17 +41,24 @@ interview-date:
 participants:
   - Alice
   - Bob
-prompt: > 
-  Entrevista sobre...
-  O entrevistador era...
-  O entrevistado era...
-  Algumas temas tratados foram...
+prompt: >
+  Falantes: Alice, Bob.
+  Termos: Universidade de São Paulo, hegemonia, manuscrito.
 ```
 
 - `audio-file`: filename of your recording (any format FFmpeg can read)
 - `language`: [ISO 639-1 language code](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes) (e.g. `pt` for Portuguese, `en` for English)
 - `participants`: list of speaker names in the expected order
-- `prompt`: short description of the recording in the target language — helps Whisper stay in the correct language and vocabulary
+- `prompt`: short vocabulary/spelling hints in the target language — speaker names, proper nouns, and jargon. **Keep it to keywords, not narrative sentences** (see [Avoiding prompt hallucination](#avoiding-prompt-hallucination) below).
+- `prompt-leak-min-run` *(optional, default `5`)*: minimum run of consecutive words shared with the prompt that is treated as leaked text and removed. Lower it (e.g. `4`) if short leaks slip through.
+
+## Avoiding prompt hallucination
+
+Whisper uses `prompt` to bias its vocabulary, but it is prone to **echoing the prompt verbatim** into the transcript on low-confidence audio (silence, hesitation, crosstalk). The transcriber automatically strips any run of `prompt-leak-min-run` or more consecutive words that matches the prompt, but you can prevent most leakage at the source:
+
+- **Use keywords, not sentences.** Prefer `Falantes: Alice, Bob. Termos: hegemonia, manuscrito.` over a paragraph describing the recording. Narrative prompts with incidental facts are what get regurgitated.
+- **Don't rely on the prompt for language.** The `language:` field already pins the language; the prompt only needs vocabulary and spellings.
+- **The prompt is optional.** For clean audio you can leave it nearly empty — an empty prompt cannot leak.
 
 3. Run the transcription:
 

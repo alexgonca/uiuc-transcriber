@@ -1,6 +1,8 @@
 import os
 import sys
 import json
+import re
+import difflib
 import subprocess
 import logging
 import time
@@ -50,6 +52,11 @@ num_speakers = len(cfg["participants"])
 my_prompt = cfg["prompt"]
 transcript_path = os.path.join(audio_folder, os.path.basename(os.path.abspath(audio_folder)) + ".md")
 
+# Minimum run of consecutive words shared with the prompt to treat as leakage.
+# Whisper regurgitates the initial_prompt on low-confidence chunks; real speech
+# almost never reproduces this many consecutive words from the prompt verbatim.
+PROMPT_LEAK_MIN_RUN = int(cfg.get("prompt-leak-min-run", 5))
+
 MIN_FREE_VRAM_GB = 4.0
 
 if torch.cuda.is_available():
@@ -87,6 +94,37 @@ if not os.path.exists(audio_file):
 # --- 2. MODEL SETUP ---
 my_asr_options = {"initial_prompt": my_prompt, "beam_size": 10}
 
+_TOKEN_RE = re.compile(r"\S+")
+
+
+def _normalize_token(tok):
+    # Lowercase and drop punctuation; keeps accented letters (Unicode \w).
+    return re.sub(r"[^\w]", "", tok.lower())
+
+
+def _normalize_prompt(prompt):
+    return [t for t in (_normalize_token(w) for w in _TOKEN_RE.findall(prompt)) if t]
+
+
+def _strip_prompt_leak(text, prompt_words, min_run):
+    """Remove runs of >= min_run consecutive words that match the prompt.
+
+    Handles leaks that appear on their own or embedded inside otherwise-real
+    speech, by excising only the matched span rather than dropping the segment.
+    """
+    if not prompt_words or not text.strip():
+        return text
+    tokens = _TOKEN_RE.findall(text)
+    norm = [_normalize_token(t) for t in tokens]
+    matcher = difflib.SequenceMatcher(a=norm, b=prompt_words, autojunk=False)
+    drop = set()
+    for a, _b, size in matcher.get_matching_blocks():
+        if size >= min_run:
+            drop.update(range(a, a + size))
+    if not drop:
+        return text
+    return " ".join(tokens[i] for i in range(len(tokens)) if i not in drop)
+
 # --- 3. TRANSCRIPTION ---
 print("Loading transcription model on GPU...")
 model = whisperx.load_model(
@@ -107,6 +145,22 @@ t_transcribe_start = time.time()
 result = model.transcribe(audio, batch_size=batch_size)
 t_transcribe_end = time.time()
 print("Transcription complete!")
+
+# --- 3.5 STRIP INITIAL-PROMPT LEAKAGE ---
+# WhisperX prepends initial_prompt to every VAD chunk in batched mode, so
+# low-confidence chunks sometimes echo the prompt verbatim. Remove those runs
+# before alignment/diarization so downstream stages only see real speech.
+_prompt_words = _normalize_prompt(my_prompt)
+_cleaned = 0
+for _seg in result["segments"]:
+    _orig = _seg.get("text", "")
+    _new = _strip_prompt_leak(_orig, _prompt_words, PROMPT_LEAK_MIN_RUN)
+    if _new != _orig:
+        _cleaned += 1
+        _seg["text"] = _new
+result["segments"] = [s for s in result["segments"] if s.get("text", "").strip()]
+if _cleaned:
+    print(f"Removed prompt-leak text from {_cleaned} segment(s).")
 
 del model
 gc.collect()

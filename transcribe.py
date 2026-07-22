@@ -21,6 +21,9 @@ _mem_bytes = int(os.environ.get('MEM_LIMIT', 0))
 _cpu_cores = os.environ.get('CPU_LIMIT', '?')
 print(f"memory = {_mem_bytes/(1024**3):.1f}GB")
 print(f"cores  = {_cpu_cores}")
+# Make torch's device indices match nvidia-smi's (PCI bus order) so the GPU
+# we pick via NVML below is the one torch.cuda.set_device() actually selects.
+os.environ.setdefault("CUDA_DEVICE_ORDER", "PCI_BUS_ID")
 import torch
 print("PyTorch Version:", torch.__version__)
 print("GPU Available:", torch.cuda.is_available())
@@ -59,17 +62,44 @@ PROMPT_LEAK_MIN_RUN = int(cfg.get("prompt-leak-min-run", 5))
 
 MIN_FREE_VRAM_GB = 4.0
 
+
+def _query_gpu_memory():
+    """Return [(index, free_gb, total_gb), ...] read from NVML via nvidia-smi.
+
+    We deliberately avoid torch.cuda.mem_get_info() here: the first CUDA call
+    touching a device initializes a context on it, which needs a few hundred MB
+    of VRAM. On a shared node a fully-occupied GPU makes that context creation
+    OOM, and the exception aborts the whole probe before we can skip that GPU
+    and find a free one. nvidia-smi reads the driver's stats without ever
+    creating a CUDA context, so a full GPU is just another row we can reject.
+    """
+    out = subprocess.check_output(
+        [
+            "nvidia-smi",
+            "--query-gpu=index,memory.free,memory.total",
+            "--format=csv,noheader,nounits",
+        ],
+        text=True,
+    )
+    gpus = []
+    for line in out.strip().splitlines():
+        idx, free_mib, total_mib = (p.strip() for p in line.split(","))
+        gpus.append((int(idx), int(free_mib) / 1024, int(total_mib) / 1024))
+    return gpus
+
+
 if torch.cuda.is_available():
-    best_idx, best_free_gb, best_total_gb = 0, 0.0, 0.0
-    for i in range(torch.cuda.device_count()):
-        free, total = torch.cuda.mem_get_info(i)
-        free_gb = free / (1024**3)
-        total_gb = total / (1024**3)
-        print(f"gpu    = {i} ({total_gb:.1f}GB total, {free_gb:.1f}GB free)")
+    best_idx, best_free_gb, best_total_gb = None, 0.0, 0.0
+    for idx, free_gb, total_gb in _query_gpu_memory():
+        print(f"gpu    = {idx} ({total_gb:.1f}GB total, {free_gb:.1f}GB free)")
         if free_gb > best_free_gb:
-            best_idx, best_free_gb, best_total_gb = i, free_gb, total_gb
-    if best_free_gb < MIN_FREE_VRAM_GB:
-        print(f"ERROR: No GPU has {MIN_FREE_VRAM_GB}GB free VRAM. Best available: GPU {best_idx} with {best_free_gb:.1f}GB. Try again later.")
+            best_idx, best_free_gb, best_total_gb = idx, free_gb, total_gb
+    if best_idx is None or best_free_gb < MIN_FREE_VRAM_GB:
+        best_desc = (
+            f"GPU {best_idx} with {best_free_gb:.1f}GB"
+            if best_idx is not None else "none"
+        )
+        print(f"ERROR: No GPU has {MIN_FREE_VRAM_GB}GB free VRAM. Best available: {best_desc}. Try again later.")
         sys.exit(1)
     device_idx = best_idx
     torch.cuda.set_device(device_idx)
@@ -186,9 +216,20 @@ _base = os.path.dirname(os.path.abspath(__file__))
 _diarizen_python = os.path.join(_base, ".local", "diarizen-venv", "bin", "python")
 _worker = os.path.join(_base, "diarize_worker.py")
 t_diarize_start = time.time()
+# The worker is a separate process, so it doesn't inherit the GPU the main
+# process selected. Pin it to that GPU via CUDA_VISIBLE_DEVICES: the chosen
+# device becomes the worker's only visible GPU (index 0), so DiariZen runs on
+# the right card and the worker's own VRAM probe hits a known-free device
+# instead of OOM-ing on a full GPU 0. Empty string => CPU (matches main).
+_worker_env = os.environ.copy()
+_worker_env["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+_worker_env["CUDA_VISIBLE_DEVICES"] = (
+    str(device_idx) if device_idx is not None else ""
+)
 subprocess.run(
     [_diarizen_python, _worker, audio_file, str(num_speakers), _diarize_json],
-    check=True
+    check=True,
+    env=_worker_env,
 )
 t_diarize_end = time.time()
 with open(_diarize_json) as f:

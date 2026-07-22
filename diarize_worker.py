@@ -38,10 +38,18 @@ pipeline.min_speakers = num_speakers
 pipeline.max_speakers = num_speakers
 
 if torch.cuda.is_available():
-    free_gb = torch.cuda.mem_get_info(0)[0] / (1024 ** 3)
-    batch_size = max(1, min(32, int(free_gb * 2)))
+    # transcribe.py pins us to the chosen GPU via CUDA_VISIBLE_DEVICES, so
+    # index 0 here is that known-free device. Guard the probe anyway: if the
+    # GPU got grabbed since the main process checked, fall back to a safe
+    # batch size instead of crashing on context-init OOM.
+    try:
+        free_gb = torch.cuda.mem_get_info(0)[0] / (1024 ** 3)
+        batch_size = max(1, min(32, int(free_gb * 2)))
+        print(f"DiariZen batch_size set to {batch_size} ({free_gb:.1f}GB free VRAM)")
+    except RuntimeError as e:
+        batch_size = 8
+        print(f"Could not probe VRAM ({e}); DiariZen batch_size = {batch_size}")
     pipeline._segmentation.batch_size = batch_size
-    print(f"DiariZen batch_size set to {batch_size} ({free_gb:.1f}GB free VRAM)")
 
 diar_results = pipeline(audio_file)
 
